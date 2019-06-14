@@ -3,16 +3,14 @@ const plugin = require('../index');
 const fs = require('fs');
 const path = require('path');
 
-const input = `a {
-  font-size: 14px from-sm(16px) to-xl(24px) lg-md(20px);
-}
-.header .nav logo {
-  background: #fff url('hells/kjjk') from-md(#000 url(http://jkjkj));
+const input = `
+a {
+  color: 10px from-xl333(10px);
 }
 `;
 
 (async () => {
-  const { css } = await postcss([
+  const result = await postcss([
     plugin({
       sizes: {
         sm: '576px',
@@ -23,5 +21,5 @@ const input = `a {
     }),
   ]).process(input, { from: undefined });
 
-  fs.writeFileSync(path.resolve(__dirname, './bundle.css'), css);
+  fs.writeFileSync(path.resolve(__dirname, './bundle.css'), result.css);
 })();

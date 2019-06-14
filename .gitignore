@@ -76,3 +76,4 @@ typings/
 .fusebox/
 *.lock
 test-dev/bundle.css
+.DS_Store

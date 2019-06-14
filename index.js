@@ -1,7 +1,8 @@
 const postcss = require('postcss');
 const { parse } = require('postcss-values-parser');
+const PLUGIN_NAME = 'postcss-media-functions';
 
-module.exports = postcss.plugin('postcss-media-functions', (opts) => (root) => {
+module.exports = postcss.plugin(PLUGIN_NAME, (opts) => (root, result) => {
   const $opts = Object.assign(
     {
       from: 'from',
@@ -11,10 +12,12 @@ module.exports = postcss.plugin('postcss-media-functions', (opts) => (root) => {
     opts
   );
 
+  const functionNames = [$opts.from, $opts.to];
   const sizeNames = [];
 
   for (const sizeName in $opts.sizes) {
     sizeNames.push(sizeName);
+    functionNames.push(sizeName);
   }
 
   const regexStr = '(%1|%2)\\-(%2)'.replace('%1', `${$opts.from}|${$opts.to}`).replace(/%2/g, sizeNames.join('|'));
@@ -32,11 +35,15 @@ module.exports = postcss.plugin('postcss-media-functions', (opts) => (root) => {
         return;
       }
 
-      let exec = baseRegex.exec(node.name);
-
-      const med1 = exec[1];
-      const med2 = exec[2];
+      let [med1, med2] = node.name.split('-');
       const value = node.params.replace(/^\(/, '').replace(/\)$/, '');
+
+      if (!(functionNames.includes(med1) && functionNames.includes(med2))) {
+        result.warn('Unknown function ' + node.name, {
+          plugin: PLUGIN_NAME,
+        });
+        return;
+      }
 
       // From
       if (med1 === $opts.from) {
