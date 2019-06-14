@@ -24,8 +24,7 @@ postcss([
 ```css
 /* usage in css */
 [selector] {
-  ... [property]: . from-sm(.) to-sm(.) sm-lg(.) .;
-  ...;
+  [property]: * from-sm(*) to-sm(*) sm-lg(*) *;
 }
 ```
 
@@ -69,4 +68,31 @@ a {
     color: white;
   }
 }
+```
+
+### Functions
+
+Config
+
+```javascript
+{
+  sizes: {
+    sm: '576px',
+    md: '768px',
+    lg: '992px',
+  }
+}
+```
+
+CSS functions
+
+```
+# color: from-md(red);
+from-[sm|md|lg]
+
+# color: to-md(red);
+to-[sm|md|lg]
+
+# color: sm-md(red);
+[sm|md|lg]-[sm|md|lg]
 ```
