@@ -19,8 +19,8 @@ function run(input, output, opts) {
 test('Resolve basic function', () => {
   const input = `
     a {
-      /*padding: sm-md(10px, 20px);*/
-      font-size: 14px from-sm(16px) md-lg(20px) to-xl(24px);
+      padding: sm-md(10px, 20px);
+      font-size: 14px from-sm(16px) lg-md(20px) to-xl(24px);
     }
   `;
 
