@@ -2,25 +2,10 @@ const postcss = require('postcss');
 const { parse } = require('postcss-values-parser');
 const PLUGIN_NAME = 'postcss-media-functions';
 
-module.exports = postcss.plugin(PLUGIN_NAME, (opts) => (root, result) => {
-  const $opts = Object.assign(
-    {
-      from: 'from',
-      to: 'to',
-      sizes: {},
-    },
-    opts
-  );
+module.exports = postcss.plugin(PLUGIN_NAME, (args) => (root, result) => {
+  const { options, functionNames, sizes } = normalizeOptions(args);
 
-  const functionNames = [$opts.from, $opts.to];
-  const sizeNames = [];
-
-  for (const sizeName in $opts.sizes) {
-    sizeNames.push(sizeName);
-    functionNames.push(sizeName);
-  }
-
-  const regexStr = '(%1|%2)\\-(%2)'.replace('%1', `${$opts.from}|${$opts.to}`).replace(/%2/g, sizeNames.join('|'));
+  const regexStr = '(%1|%2)\\-(%2)'.replace('%1', `${options.from}|${options.to}`).replace(/%2/g, sizes.join('|'));
   const baseRegex = new RegExp(regexStr, 'i');
 
   root.walkDecls((decl) => {
@@ -46,12 +31,12 @@ module.exports = postcss.plugin(PLUGIN_NAME, (opts) => (root, result) => {
       }
 
       // From
-      if (med1 === $opts.from) {
+      if (med1 === options.from) {
         // console.log('From:', med2, 'value:', value);
 
         createFromMedia({
           root,
-          size: $opts.sizes[med2],
+          size: options.sizes[med2],
           selector: decl.parent.selector,
           prop: decl.prop,
           value,
@@ -59,12 +44,12 @@ module.exports = postcss.plugin(PLUGIN_NAME, (opts) => (root, result) => {
       }
 
       // To
-      else if (med1 === $opts.to) {
+      else if (med1 === options.to) {
         // console.log('To:', med2, 'value:', value);
 
         createToMedia({
           root,
-          size: $opts.sizes[med2],
+          size: options.sizes[med2],
           selector: decl.parent.selector,
           prop: decl.prop,
           value,
@@ -77,8 +62,8 @@ module.exports = postcss.plugin(PLUGIN_NAME, (opts) => (root, result) => {
 
         createBetweenMedia({
           root,
-          size1: $opts.sizes[med1],
-          size2: $opts.sizes[med2],
+          size1: options.sizes[med1],
+          size2: options.sizes[med2],
           selector: decl.parent.selector,
           prop: decl.prop,
           value,
@@ -100,6 +85,35 @@ module.exports = postcss.plugin(PLUGIN_NAME, (opts) => (root, result) => {
       decl.remove();
     }
   });
+});
+
+module.exports.generateVariables = postcss.plugin(PLUGIN_NAME, (args, preProcessor = 'scss') => (root, result) => {
+  const { options, functionNames, sizes } = normalizeOptions(args);
+  const vars = [''];
+
+  sizes.forEach((size) => {
+    const fromStr = createVariable(`${options.from}-${size}`, `(min-width: ${options.sizes[size]})`, preProcessor);
+    const toStr = createVariable(`${options.to}-${size}`, `(max-width: ${substractSize(options.sizes[size])})`, preProcessor);
+
+    vars.push(fromStr);
+    vars.push(toStr);
+
+    sizes.forEach((innerSize) => {
+      // Skip same size
+      if (innerSize === size) {
+        return;
+      }
+
+      const [sizeMin, sizeMax] = normalizeSizes(options.sizes[size], options.sizes[innerSize]);
+      const value = `(min-width: ${sizeMin}) and (max-width: ${substractSize(sizeMax)})`;
+
+      vars.push(createVariable(`${size}-${innerSize}`, value, preProcessor));
+    });
+  });
+
+  vars.join('\n');
+
+  root.prepend(vars.join('\n'));
 });
 
 function createFromMedia({ root, size, selector, prop, value }) {
@@ -162,4 +176,47 @@ function substractSize(size) {
 
   // TODO: em/rem ?
   return size.replace(s1, s1 - 1);
+}
+
+function normalizeOptions(opts) {
+  const options = Object.assign(
+    {
+      from: 'from',
+      to: 'to',
+      sizes: {},
+    },
+    opts
+  );
+
+  const functionNames = [options.from, options.to];
+  const sizes = [];
+
+  for (const sizeName in options.sizes) {
+    sizes.push(sizeName);
+    functionNames.push(sizeName);
+  }
+
+  return {
+    options,
+    functionNames,
+    sizes,
+  };
+}
+
+function createVariable(name, val, preProcessor) {
+  if (typeof preProcessor === 'Function') {
+    return preProcessor(name, val);
+  }
+
+  if (['scss', 'stylus'].includes(preProcessor)) {
+    return `$${name}: ${val};`;
+  }
+
+  if (preProcessor === 'sass') {
+    return `$${name}: ${val}`;
+  }
+
+  if (preProcessor === 'less') {
+    return `@${name}: ${val};`;
+  }
 }
