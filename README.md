@@ -26,9 +26,30 @@ postcss([
 [selector] {
   [property]: * from-sm(*) to-sm(*) sm-lg(*) *;
 }
+
+/*
+  prop: from-[sm|md|lg];
+  prop: to-[sm|md|lg]
+  prop: [sm|md|lg]-[sm|md|lg]
+*/
 ```
 
-### Examples
+## Example:
+
+### Config
+
+```javascript
+postcss([
+  require('postcss-media-functions')({
+    sizes: {
+      sm: '576px',
+      md: '768px',
+      lg: '992px',
+      xl: '1200px',
+    },
+  }),
+]);
+```
 
 ### Input
 
@@ -70,29 +91,56 @@ a {
 }
 ```
 
-### Functions
-
-Config
+### Generate variables for pre-processors
 
 ```javascript
-{
+const options = {
   sizes: {
     sm: '576px',
     md: '768px',
     lg: '992px',
+  },
+};
+
+postcss([
+  require('postcss-media-functions')
+    .generateVariables(options, 'scss' /* default, [scss, sass, stylus, less] */)
+]);
+```
+
+Will generate and include the following variables into the file
+
+```
+$from-sm: (min-width: 576px);
+$to-sm: (max-width: 575px);
+$sm-md: (min-width: 576px) and (max-width: 767px);
+$sm-lg: (min-width: 576px) and (max-width: 991px);
+$from-md: (min-width: 768px);
+$to-md: (max-width: 767px);
+$md-sm: (min-width: 576px) and (max-width: 767px);
+$md-lg: (min-width: 768px) and (max-width: 991px);
+$from-lg: (min-width: 992px);
+$to-lg: (max-width: 991px);
+$lg-sm: (min-width: 576px) and (max-width: 991px);
+$lg-md: (min-width: 768px) and (max-width: 991px);
+```
+
+and then you can use them
+
+```scss
+a {
+  @media #{$from-sm} {
+    color: red;
   }
 }
 ```
 
-CSS functions
+->
 
-```
-# color: from-md(red);
-from-[sm|md|lg]
-
-# color: to-md(red);
-to-[sm|md|lg]
-
-# color: sm-md(red);
-[sm|md|lg]-[sm|md|lg]
+```scss
+@media (min-width: 576px) {
+  a {
+    color: red;
+  }
+}
 ```
