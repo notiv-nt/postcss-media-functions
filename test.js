@@ -10,6 +10,9 @@ const BASE_PARAMS = {
   },
 };
 
+// prettier-ignore
+const normalize = (str) => str.replace(/\n/gm, ' ').replace(/\s+/gm, ' ').trim();
+
 function run(input, output, opts) {
   return postcss([plugin(opts)])
     .process(input, { from: undefined })
@@ -19,8 +22,13 @@ function run(input, output, opts) {
     });
 }
 
-function normalize(str) {
-  return str.replace(/\n/gm, ' ').replace(/\s+/gm, ' ');
+function runWithGenerate(input, output, opts) {
+  return postcss([plugin.generateVariables(opts)])
+    .process(input, { from: undefined })
+    .then((result) => {
+      expect(normalize(result.css)).toEqual(normalize(output));
+      expect(result.warnings()).toHaveLength(0);
+    });
 }
 
 test('Empty input', () => {
@@ -232,4 +240,23 @@ test('Multiple declarations/functions', () => {
   `;
 
   return run(input, output, BASE_PARAMS);
+});
+
+test('Generate variables', () => {
+  const input = ``;
+  const output = `
+    $from-sm: (min-width: 576px);
+    $to-sm: (max-width: 575px);
+    $sm-md: (min-width: 576px) and (max-width: 767px);
+    $from-md: (min-width: 768px);
+    $to-md: (max-width: 767px);
+    $md-sm: (min-width: 576px) and (max-width: 767px)
+  `;
+
+  return runWithGenerate(input, output, {
+    sizes: {
+      sm: '576px',
+      md: '768px',
+    },
+  });
 });
