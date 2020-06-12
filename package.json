@@ -1,6 +1,6 @@
 {
   "name": "postcss-media-functions",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "index.bundle.js",
   "repository": "https://github.com/notiv-nt/postcss-media-functions.git",
   "author": "Mikhail Novikov <notiv.nt@gmail.com>",
@@ -12,7 +12,7 @@
     "build": "terser index.js -o index.bundle.js"
   },
   "devDependencies": {
-    "jest": "^24.1.0",
+    "jest": "^26.0.1",
     "postcss": "^7.0.14",
     "terser": "^4.1.2"
   },
@@ -20,6 +20,6 @@
     "index.bundle.js"
   ],
   "dependencies": {
-    "postcss-values-parser": "^3.0.5"
+    "postcss-values-parser": "^3.2.1"
   }
 }
