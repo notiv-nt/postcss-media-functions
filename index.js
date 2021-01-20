@@ -2,119 +2,128 @@ const postcss = require('postcss');
 const { parse } = require('postcss-values-parser');
 const PLUGIN_NAME = 'postcss-media-functions';
 
-module.exports = postcss.plugin(PLUGIN_NAME, (args) => (root, result) => {
-  const { options, functionNames, sizes } = normalizeOptions(args);
+module.exports = (args = {}) => {
+  return {
+    postcssPlugin: PLUGIN_NAME,
+    Once(root, result) {
+      const { options, functionNames, sizes } = normalizeOptions(args);
 
-  const regexStr = '(%1|%2)\\-(%2)'.replace('%1', `${options.from}|${options.to}`).replace(/%2/g, sizes.join('|'));
-  const baseRegex = new RegExp(regexStr, 'i');
+      const regexStr = '(%1|%2)\\-(%2)'.replace('%1', `${options.from}|${options.to}`).replace(/%2/g, sizes.join('|'));
+      const baseRegex = new RegExp(regexStr, 'i');
 
-  root.walkDecls((decl) => {
-    if (!baseRegex.test(decl.value)) {
-      return;
+      root.walkDecls((decl) => {
+        if (!baseRegex.test(decl.value)) {
+          return;
+        }
+
+        const parsed = parse(decl.value);
+
+        parsed.nodes.forEach((node, i) => {
+          if (!(node.type === 'func' && node.name.match(regexStr))) {
+            return;
+          }
+
+          let [med1, med2] = node.name.split('-');
+          const value = node.params.replace(/^\(/, '').replace(/\)$/, '');
+
+          if (!(functionNames.includes(med1) && functionNames.includes(med2))) {
+            result.warn('Unknown function ' + node.name, {
+              plugin: PLUGIN_NAME,
+            });
+            return;
+          }
+
+          // From
+          if (med1 === options.from) {
+            // console.log('From:', med2, 'value:', value);
+
+            createFromMedia({
+              root,
+              size: options.sizes[med2],
+              selector: decl.parent.selector,
+              prop: decl.prop,
+              value,
+            });
+          }
+
+          // To
+          else if (med1 === options.to) {
+            // console.log('To:', med2, 'value:', value);
+
+            createToMedia({
+              root,
+              size: options.sizes[med2],
+              selector: decl.parent.selector,
+              prop: decl.prop,
+              value,
+            });
+          }
+
+          // Between
+          else {
+            // console.log('From:', med1, 'To:', med2, 'value:', value);
+
+            createBetweenMedia({
+              root,
+              size1: options.sizes[med1],
+              size2: options.sizes[med2],
+              selector: decl.parent.selector,
+              prop: decl.prop,
+              value,
+            });
+          }
+
+          parsed.nodes[i] = postcss.root({ text: 'nope' });
+        });
+
+        decl.value = parsed.toString();
+
+        /*
+        decl.value = decl.value.replace(baseRegex, (_, med1, med2, values) => {
+          return '';
+        });
+        */
+
+        if (!decl.value.trim()) {
+          decl.remove();
+        }
+      });    }
+  };
+}
+
+module.exports.generateVariables = (args, preProcessor = 'scss')=> {
+  return {
+    postcssPlugin: PLUGIN_NAME,
+    Once(root, result) {
+      const { options, functionNames, sizes } = normalizeOptions(args);
+      const vars = [''];
+
+      sizes.forEach((size) => {
+        const fromStr = createVariable(`${options.from}-${size}`, `(min-width: ${options.sizes[size]})`, preProcessor);
+        const toStr = createVariable(`${options.to}-${size}`, `(max-width: ${substractSize(options.sizes[size])})`, preProcessor);
+
+        vars.push(fromStr);
+        vars.push(toStr);
+
+        sizes.forEach((innerSize) => {
+          // Skip same size
+          if (innerSize === size) {
+            return;
+          }
+
+          const [sizeMin, sizeMax] = normalizeSizes(options.sizes[size], options.sizes[innerSize]);
+          const value = `(min-width: ${sizeMin}) and (max-width: ${substractSize(sizeMax)})`;
+
+          vars.push(createVariable(`${size}-${innerSize}`, value, preProcessor));
+        });
+      });
+
+      vars.join('\n');
+
+      root.prepend(vars.join('\n'));
     }
-
-    const parsed = parse(decl.value);
-
-    parsed.nodes.forEach((node, i) => {
-      if (!(node.type === 'func' && node.name.match(regexStr))) {
-        return;
-      }
-
-      let [med1, med2] = node.name.split('-');
-      const value = node.params.replace(/^\(/, '').replace(/\)$/, '');
-
-      if (!(functionNames.includes(med1) && functionNames.includes(med2))) {
-        result.warn('Unknown function ' + node.name, {
-          plugin: PLUGIN_NAME,
-        });
-        return;
-      }
-
-      // From
-      if (med1 === options.from) {
-        // console.log('From:', med2, 'value:', value);
-
-        createFromMedia({
-          root,
-          size: options.sizes[med2],
-          selector: decl.parent.selector,
-          prop: decl.prop,
-          value,
-        });
-      }
-
-      // To
-      else if (med1 === options.to) {
-        // console.log('To:', med2, 'value:', value);
-
-        createToMedia({
-          root,
-          size: options.sizes[med2],
-          selector: decl.parent.selector,
-          prop: decl.prop,
-          value,
-        });
-      }
-
-      // Between
-      else {
-        // console.log('From:', med1, 'To:', med2, 'value:', value);
-
-        createBetweenMedia({
-          root,
-          size1: options.sizes[med1],
-          size2: options.sizes[med2],
-          selector: decl.parent.selector,
-          prop: decl.prop,
-          value,
-        });
-      }
-
-      parsed.nodes[i] = postcss.root({ text: 'nope' });
-    });
-
-    decl.value = parsed.toString();
-
-    /*
-    decl.value = decl.value.replace(baseRegex, (_, med1, med2, values) => {
-      return '';
-    });
-    */
-
-    if (!decl.value.trim()) {
-      decl.remove();
-    }
-  });
-});
-
-module.exports.generateVariables = postcss.plugin(PLUGIN_NAME, (args, preProcessor = 'scss') => (root, result) => {
-  const { options, functionNames, sizes } = normalizeOptions(args);
-  const vars = [''];
-
-  sizes.forEach((size) => {
-    const fromStr = createVariable(`${options.from}-${size}`, `(min-width: ${options.sizes[size]})`, preProcessor);
-    const toStr = createVariable(`${options.to}-${size}`, `(max-width: ${substractSize(options.sizes[size])})`, preProcessor);
-
-    vars.push(fromStr);
-    vars.push(toStr);
-
-    sizes.forEach((innerSize) => {
-      // Skip same size
-      if (innerSize === size) {
-        return;
-      }
-
-      const [sizeMin, sizeMax] = normalizeSizes(options.sizes[size], options.sizes[innerSize]);
-      const value = `(min-width: ${sizeMin}) and (max-width: ${substractSize(sizeMax)})`;
-
-      vars.push(createVariable(`${size}-${innerSize}`, value, preProcessor));
-    });
-  });
-
-  vars.join('\n');
-
-  root.prepend(vars.join('\n'));
-});
+  }
+}
 
 function createFromMedia({ root, size, selector, prop, value }) {
   const media = postcss.atRule({
