@@ -6,7 +6,7 @@
   "author": "Mikhail Novikov <notiv.nt@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "prepublish": "npm run test && npm run build",
+    "prepublishOnly": "npm run test && npm run build",
     "test": "jest test.js",
     "test:dev": "jest --watch test.js",
     "build": "terser index.js -o index.bundle.js"
