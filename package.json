@@ -12,7 +12,7 @@
     "build": "terser index.js -o index.bundle.js"
   },
   "devDependencies": {
-    "jest": "^26.0.1",
+    "jest": "^27.2.5",
     "postcss": "^8.2.4",
     "terser": "^5.5.1"
   },
@@ -20,6 +20,6 @@
     "index.bundle.js"
   ],
   "dependencies": {
-    "postcss-values-parser": "^5.0.0"
+    "postcss-values-parser": "^6.0.1"
   }
 }
