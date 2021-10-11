@@ -1,6 +1,6 @@
 {
   "name": "postcss-media-functions",
-  "version": "2.2.1",
+  "version": "2.2.0",
   "main": "index.bundle.js",
   "repository": "https://github.com/notiv-nt/postcss-media-functions.git",
   "author": "Mikhail Novikov <notiv.nt@gmail.com>",
