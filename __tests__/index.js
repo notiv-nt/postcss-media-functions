@@ -1,5 +1,5 @@
 const postcss = require('postcss');
-const plugin = require('./index');
+const plugin = require('../index');
 
 const BASE_PARAMS = {
   sizes: {
